@@ -22,12 +22,13 @@
 #define NUM_RAM 4096
 #define NUM_REG 16
 #define NUM_STACK 16
+#define VF 15
 
 uint8_t ram[NUM_RAM];
 uint16_t stack[NUM_STACK];
 
 
-uint8_t reg[NUM_REG];
+uint8_t registers[NUM_REG];
 uint16_t reg_i;
 uint8_t delay_reg;
 uint8_t sound_reg;
@@ -36,7 +37,7 @@ uint16_t pc;
 uint8_t sp;
 
 void InitCHIP8() {
-    memset(reg, 0, NUM_REG);
+    memset(registers, 0, NUM_REG);
     reg_i = 0;
     delay_reg = 0;
     sound_reg = 0;
@@ -69,41 +70,53 @@ void EmulateCycle() {
         }
         case 0x1000: {
             uint16_t addr = instruction & 0x0FFF;
+            pc = addr;
             DPRINT("JP %d\n", addr);
             break;
         }
         case 0x2000: {
             uint16_t addr = instruction & 0x0FFF;
-            DPRINT("CAL %d\n", addr);
+            // Is this the right order of operations?
+            stack[sp] = pc;
+            ++sp;
+            pc = addr;
+            DPRINT("CALL %d\n", addr);
             break;
         }
         case 0x3000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
+            pc += registers[reg] == val ? 2 : 1;
             DPRINT("SE V%d, %d\n", reg, val);
             break;
         }
         case 0x4000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
+            pc += registers[reg] != val ? 2 : 1;
             DPRINT("SNE V%d, %d\n", reg, val);
             break;
         }
         case 0x5000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
+            pc += registers[lreg] == registers[rreg] ? 2 : 1;
             DPRINT("SE V%d, V%d\n", lreg, rreg);
             break;
         }
         case 0x6000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
+            registers[reg] = val;
+            ++pc;
             DPRINT("LD V%d, %d\n", reg, val);
             break;
         }
         case 0x7000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
+            registers[reg] += val;
+            ++pc;
             DPRINT("ADD V%d, %d\n", reg, val);
             break;
         }
@@ -112,38 +125,58 @@ void EmulateCycle() {
             uint8_t rreg = (instruction & 0x00F0) >> 4;
             switch (instruction & 0x000F) {
                 case 0x0000: {
+                    registers[lreg] = registers[rreg];
+                    ++pc;
                     DPRINT("LD V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0001: {
+                    registers[lreg] |= registers[rreg];
                     DPRINT("OR V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0002: {
+                    registers[lreg] &= registers[rreg];
                     DPRINT("AND V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0003: {
+                    registers[lreg] ^= registers[rreg];
                     DPRINT("XOR V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0004: {
+                    registers[VF] = 255 - registers[lreg] < registers[rreg] ? 1 : 0;
+                    registers[lreg] += registers[rreg];
+                    ++pc;
                     DPRINT("ADD V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0005: {
+                    registers[VF] = registers[lreg] > registers[rreg] ? 1 : 0;
+                    registers[lreg] -= registers[rreg];
+                    ++pc;
                     DPRINT("SUB V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0006: {
+                    registers[VF] = registers[lreg] & 0x01;
+                    registers[lreg] /= 2;
+                    ++pc;
                     DPRINT("SHR V%d {, V%d}\n", lreg, rreg);
                     break;
                 }
                 case 0x0007: {
+                    registers[VF] = registers[rreg] > registers[lreg] ? 1 : 0;
+                    registers[lreg] = registers[rreg] - registers[lreg];
+                    ++pc;
                     DPRINT("SUBN V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x000E: {
+                    registers[VF] = registers[lreg] & 0x80;
+                    registers[lreg] *= 2;
+                    ++pc;
                     DPRINT("SHL V%d {, V%d}\n", lreg, rreg);
                     break;
                 }
@@ -158,22 +191,28 @@ void EmulateCycle() {
         case 0x9000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
+            pc += registers[lreg] != registers[rreg] ? 2 : 1;
             DPRINT("SNE V%d, V%d\n", lreg, rreg);
             break;
         }
         case 0xA000: {
             uint16_t addr = instruction & 0x0FFF;
+            reg_i = addr;
+            ++pc;
             DPRINT("LD I, %d\n", addr);
             break;
         }
         case 0xB000: {
             uint16_t addr = instruction & 0x0FFF;
+            pc = addr + registers[0];
             DPRINT("JP V0, %d\n", addr);
             break;
         }
         case 0xC000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
+            registers[reg] = (rand() % 255) & val;
+            ++pc;
             DPRINT("RND V%d, %d\n", reg, val);
             break;
         }
@@ -207,6 +246,8 @@ void EmulateCycle() {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             switch (instruction & 0x00FF) {
                 case 0x0007: {
+                    registers[reg] = delay_reg;
+                    ++pc;
                     DPRINT("LD V%d, DT\n", reg);
                     break;
                 }
@@ -215,14 +256,20 @@ void EmulateCycle() {
                     break;
                 }
                 case 0x0015: {
+                    delay_reg = registers[reg];
+                    ++pc;
                     DPRINT("LD DT, V%d\n", reg);
                     break;
                 }
                 case 0x0018: {
+                    sound_reg = registers[reg];
+                    ++pc;
                     DPRINT("LD ST, V%d\n", reg);
                     break;
                 }
                 case 0x001E: {
+                    reg_i += registers[reg];
+                    ++pc;
                     DPRINT("ADD I, V%d\n", reg);
                     break;
                 }
@@ -235,10 +282,21 @@ void EmulateCycle() {
                     break;
                 }
                 case 0x0055: {
+                    uint16_t addr = reg_i;
+                    // TODO: implement as memcpy.
+                    for (uint8_t i = 0; i <= reg; ++i, ++addr) {
+                        ram[addr] = registers[i];
+                    }
+                    ++pc;
                     DPRINT("LD [I], V%d\n", reg);
                     break;
                 }
                 case 0x0065: {
+                    uint16_t addr = reg_i;
+                    for (uint8_t i = 0; i <= reg; ++i, ++addr) {
+                        registers[i] = ram[addr];
+                    }
+                    ++pc;
                     DPRINT("LD V%d, [I]\n", reg);
                     break;
                 }
