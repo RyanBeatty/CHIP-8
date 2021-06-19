@@ -10,12 +10,14 @@
 #include <arpa/inet.h>
 #include <inttypes.h>
 
+#ifndef DEBUG
+    #define DEBUG 0
+#endif
 
-// // Debug 
-// #ifdef DEBUG
-//     #define DPRINT(fmt, args...) printf(fmt, ##args)
-// #else
-//     #define DPRINT(fmt, args...)
+// Debug printing macro function.
+// https://stackoverflow.com/questions/1644868/define-macro-for-debug-printing-in-c
+#define DPRINT(...) \
+    do { if (DEBUG) printf(__VA_ARGS__); } while (0)
 
 #define NUM_RAM 4096
 #define NUM_REG 16
@@ -46,63 +48,63 @@ void InitCHIP8() {
 
 void EmulateCycle() {
     uint16_t instruction = ram[pc] | (ram[pc + 1] << 8);
-    printf("0x%04" PRIx16 ": ", instruction);
+    DPRINT("0x%04" PRIx16 ": ", instruction);
     switch (instruction & 0xF000) {
         case 0x0000: {
             switch (instruction) {
                 case 0x00E0: {
-                    printf("CLS\n");
+                    DPRINT("CLS\n");
                     break;
                 }
                 case 0x00EE: {
-                    printf("RET\n");
+                    DPRINT("RET\n");
                     break;
                 }
                 default: {
                     uint16_t addr = instruction & 0x0FFF;
-                    printf("SYS %d\n", addr);
+                    DPRINT("SYS %d\n", addr);
                 }
             }
             break;
         }
         case 0x1000: {
             uint16_t addr = instruction & 0x0FFF;
-            printf("JP %d\n", addr);
+            DPRINT("JP %d\n", addr);
             break;
         }
         case 0x2000: {
             uint16_t addr = instruction & 0x0FFF;
-            printf("CAL %d\n", addr);
+            DPRINT("CAL %d\n", addr);
             break;
         }
         case 0x3000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
-            printf("SE V%d, %d\n", reg, val);
+            DPRINT("SE V%d, %d\n", reg, val);
             break;
         }
         case 0x4000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
-            printf("SNE V%d, %d\n", reg, val);
+            DPRINT("SNE V%d, %d\n", reg, val);
             break;
         }
         case 0x5000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
-            printf("SE V%d, V%d\n", lreg, rreg);
+            DPRINT("SE V%d, V%d\n", lreg, rreg);
             break;
         }
         case 0x6000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
-            printf("LD V%d, %d\n", reg, val);
+            DPRINT("LD V%d, %d\n", reg, val);
             break;
         }
         case 0x7000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
-            printf("ADD V%d, %d\n", reg, val);
+            DPRINT("ADD V%d, %d\n", reg, val);
             break;
         }
         case 0x8000: {
@@ -110,39 +112,39 @@ void EmulateCycle() {
             uint8_t rreg = (instruction & 0x00F0) >> 4;
             switch (instruction & 0x000F) {
                 case 0x0000: {
-                    printf("LD V%d, V%d\n", lreg, rreg);
+                    DPRINT("LD V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0001: {
-                    printf("OR V%d, V%d\n", lreg, rreg);
+                    DPRINT("OR V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0002: {
-                    printf("AND V%d, V%d\n", lreg, rreg);
+                    DPRINT("AND V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0003: {
-                    printf("XOR V%d, V%d\n", lreg, rreg);
+                    DPRINT("XOR V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0004: {
-                    printf("ADD V%d, V%d\n", lreg, rreg);
+                    DPRINT("ADD V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0005: {
-                    printf("SUB V%d, V%d\n", lreg, rreg);
+                    DPRINT("SUB V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0006: {
-                    printf("SHR V%d {, V%d}\n", lreg, rreg);
+                    DPRINT("SHR V%d {, V%d}\n", lreg, rreg);
                     break;
                 }
                 case 0x0007: {
-                    printf("SUBN V%d, V%d\n", lreg, rreg);
+                    DPRINT("SUBN V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x000E: {
-                    printf("SHL V%d {, V%d}\n", lreg, rreg);
+                    DPRINT("SHL V%d {, V%d}\n", lreg, rreg);
                     break;
                 }
                 default: {
@@ -156,41 +158,41 @@ void EmulateCycle() {
         case 0x9000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
-            printf("SNE V%d, V%d\n", lreg, rreg);
+            DPRINT("SNE V%d, V%d\n", lreg, rreg);
             break;
         }
         case 0xA000: {
             uint16_t addr = instruction & 0x0FFF;
-            printf("LD I, %d\n", addr);
+            DPRINT("LD I, %d\n", addr);
             break;
         }
         case 0xB000: {
             uint16_t addr = instruction & 0x0FFF;
-            printf("JP V0, %d\n", addr);
+            DPRINT("JP V0, %d\n", addr);
             break;
         }
         case 0xC000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             uint8_t val = instruction & 0x00FF;
-            printf("RND V%d, %d\n", reg, val);
+            DPRINT("RND V%d, %d\n", reg, val);
             break;
         }
         case 0xD000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
             uint8_t nbytes = instruction & 0x000F;
-            printf("DRW V%d, V%d, %d\n", lreg, rreg, nbytes);
+            DPRINT("DRW V%d, V%d, %d\n", lreg, rreg, nbytes);
             break;
         }
         case 0xE000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             switch (instruction & 0x00FF) {
                 case 0x009E: {
-                    printf("SKP V%d\n", reg);
+                    DPRINT("SKP V%d\n", reg);
                     break;
                 }
                 case 0x00A1: {
-                    printf("SKNP V%d\n", reg);
+                    DPRINT("SKNP V%d\n", reg);
                     break;
                 }
                 default: {
@@ -205,39 +207,39 @@ void EmulateCycle() {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             switch (instruction & 0x00FF) {
                 case 0x0007: {
-                    printf("LD V%d, DT\n", reg);
+                    DPRINT("LD V%d, DT\n", reg);
                     break;
                 }
                 case 0x000A: {
-                    printf("LD V%d, K\n", reg);
+                    DPRINT("LD V%d, K\n", reg);
                     break;
                 }
                 case 0x0015: {
-                    printf("LD DT, V%d\n", reg);
+                    DPRINT("LD DT, V%d\n", reg);
                     break;
                 }
                 case 0x0018: {
-                    printf("LD ST, V%d\n", reg);
+                    DPRINT("LD ST, V%d\n", reg);
                     break;
                 }
                 case 0x001E: {
-                    printf("ADD I, V%d\n", reg);
+                    DPRINT("ADD I, V%d\n", reg);
                     break;
                 }
                 case 0x0029: {
-                    printf("LD F, V%d\n", reg);
+                    DPRINT("LD F, V%d\n", reg);
                     break;
                 }
                 case 0x0033: {
-                    printf("LD B, V%d\n", reg);
+                    DPRINT("LD B, V%d\n", reg);
                     break;
                 }
                 case 0x0055: {
-                    printf("LD [I], V%d\n", reg);
+                    DPRINT("LD [I], V%d\n", reg);
                     break;
                 }
                 case 0x0065: {
-                    printf("LD V%d, [I]\n", reg);
+                    DPRINT("LD V%d, [I]\n", reg);
                     break;
                 }
                 default: {
