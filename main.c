@@ -168,6 +168,7 @@ void InitCHIP8() {
     sp = 0; 
     memset(ram, 0, NUM_RAM);
     memset(stack, 0, NUM_STACK * sizeof(uint16_t));
+    return ;
 }
 
 void EmulateCycle() {
@@ -177,8 +178,9 @@ void EmulateCycle() {
         case 0x0000: {
             switch (instruction) {
                 case 0x00E0: {
+                    ClearScreen();
+                    ++pc;
                     DPRINT("CLS\n");
-                    assert(false);
                     break;
                 }
                 case 0x00EE: {
@@ -469,6 +471,7 @@ void EmulateCycle() {
             exit(EXIT_FAILURE);
         }
     }
+    return ;
 }
 
 
@@ -564,9 +567,14 @@ void InitGraphics() {
     DPRINT("order: %d\n", SDL_PIXELORDER(SDL_PIXELFORMAT_ABGR8888));
     DPRINT("layout: %d\n", SDL_PIXELLAYOUT(SDL_PIXELFORMAT_ABGR8888));
     DPRINT("bytes/pixel: %d\n", SDL_BYTESPERPIXEL(SDL_PIXELFORMAT_ABGR8888));
+    return ;
 }
 
-void Draw() {
+void Render() {
+    if (SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * sizeof(Pixel)) < 0) {
+        fprintf(stderr, "Failed to update texture! SDL Error: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
     if (SDL_RenderClear(renderer) < 0) {
         fprintf(stderr, "Failed to clear renderer! SDL Error: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
@@ -576,6 +584,12 @@ void Draw() {
         exit(EXIT_FAILURE);
     }
     SDL_RenderPresent(renderer);
+    return ;
+}
+
+void ClearScreen() {
+    memset(pixels, 0x00000000, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(Pixel));
+    return ;
 }
 
 int main(int argc, char** argv) {
@@ -590,7 +604,7 @@ int main(int argc, char** argv) {
             exit(EXIT_FAILURE);
         }
 
-        Draw();
+        Render();
         sleep(1);
     }
 
