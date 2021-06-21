@@ -188,8 +188,10 @@ void EmulateCycle() {
                     break;
                 }
                 case 0x00EE: {
+                    // TODO: Is this the right order of operations?
+                    --sp;
+                    pc = stack[sp];
                     DPRINT("RET\n");
-                    assert(false);
                     break;
                 }
                 default: {
@@ -207,8 +209,8 @@ void EmulateCycle() {
             break;
         }
         case 0x2000: {
+            // TODO: Is this the right order of operations?
             uint16_t addr = instruction & 0x0FFF;
-            // Is this the right order of operations?
             stack[sp] = pc;
             ++sp;
             pc = addr;
