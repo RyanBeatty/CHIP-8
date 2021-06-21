@@ -372,6 +372,7 @@ void EmulateCycle() {
         }
         case 0xF000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
+            assert(reg < NUM_REG);
             switch (instruction & 0x00FF) {
                 case 0x0007: {
                     registers[reg] = delay_reg;
@@ -403,13 +404,22 @@ void EmulateCycle() {
                     break;
                 }
                 case 0x0029: {
+                    uint8_t font_idx = registers[reg];
+                    assert(font_idx < NUM_FONTS);
+                    reg_i = fonts[font_idx];
+                    ++pc;
                     DPRINT("LD F, V%d\n", reg);
-                    assert(false);
                     break;
                 }
                 case 0x0033: {
+                    uint8_t val = registers[reg];
+                    ram[reg_i + 2] = val % 10;
+                    val /= 10;
+                    ram[reg_i + 1] = val % 10;
+                    val /= 10;
+                    ram[reg_i] = val;
+                    ++pc;
                     DPRINT("LD B, V%d\n", reg);
-                    assert(false);
                     break;
                 }
                 case 0x0055: {
