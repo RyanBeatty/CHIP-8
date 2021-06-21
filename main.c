@@ -9,6 +9,11 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <inttypes.h>
+#include <SDL.h>
+#include <stdbool.h>
+
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
 
 #ifndef DEBUG
     #define DEBUG 0
@@ -55,10 +60,12 @@ void EmulateCycle() {
             switch (instruction) {
                 case 0x00E0: {
                     DPRINT("CLS\n");
+                    assert(false);
                     break;
                 }
                 case 0x00EE: {
                     DPRINT("RET\n");
+                    assert(false);
                     break;
                 }
                 default: {
@@ -221,6 +228,7 @@ void EmulateCycle() {
             uint8_t rreg = (instruction & 0x00F0) >> 4;
             uint8_t nbytes = instruction & 0x000F;
             DPRINT("DRW V%d, V%d, %d\n", lreg, rreg, nbytes);
+            assert(false);
             break;
         }
         case 0xE000: {
@@ -228,10 +236,12 @@ void EmulateCycle() {
             switch (instruction & 0x00FF) {
                 case 0x009E: {
                     DPRINT("SKP V%d\n", reg);
+                    assert(false);
                     break;
                 }
                 case 0x00A1: {
                     DPRINT("SKNP V%d\n", reg);
+                    assert(false);
                     break;
                 }
                 default: {
@@ -253,6 +263,7 @@ void EmulateCycle() {
                 }
                 case 0x000A: {
                     DPRINT("LD V%d, K\n", reg);
+                    assert(false);
                     break;
                 }
                 case 0x0015: {
@@ -275,10 +286,12 @@ void EmulateCycle() {
                 }
                 case 0x0029: {
                     DPRINT("LD F, V%d\n", reg);
+                    assert(false);
                     break;
                 }
                 case 0x0033: {
                     DPRINT("LD B, V%d\n", reg);
+                    assert(false);
                     break;
                 }
                 case 0x0055: {
@@ -315,8 +328,6 @@ void EmulateCycle() {
         }
     }
 }
-
-void Draw() {}
 
 
 
@@ -369,24 +380,97 @@ void RomInit(Rom* rom, const char* filename) {
     return ;
 }
 
-int main(int argc, char** argv) {
-    if (argc != 2) {
-        fprintf(stderr, "usage: main <rom-filename>\n");
-        fflush(stderr);
+typedef uint32_t Pixel;
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
+SDL_Texture* texture = NULL;
+Pixel pixels[SCREEN_WIDTH * SCREEN_HEIGHT];
+
+
+void InitGraphics() {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        fprintf(stderr, "SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
-    
-    const char* rom_filename = argv[1];
-    Rom rom;
-    RomInit(&rom, rom_filename);
 
-    InitCHIP8();
-    memcpy(&ram[0x200], rom.data, rom.size);
-
-    for (;;) {
-        EmulateCycle();
-        Draw();
+    window = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    if( window == NULL ){
+        fprintf(stderr, "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
+        exit(EXIT_FAILURE);
     }
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (renderer == NULL) {
+        fprintf(stderr, "Renderer could not be created! SDL Error: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    if (SDL_RenderSetLogicalSize(renderer, 64, 32) < 0) {
+        fprintf(stderr, "Failed to set renderer logical size! SDL Error: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, SCREEN_WIDTH, SCREEN_HEIGHT);
+    if (texture == NULL) {
+        fprintf(stderr, "Texture could not be created! SDL Error: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    DPRINT("type: %d\n", SDL_PIXELTYPE(SDL_PIXELFORMAT_ABGR8888));
+    DPRINT("order: %d\n", SDL_PIXELORDER(SDL_PIXELFORMAT_ABGR8888));
+    DPRINT("layout: %d\n", SDL_PIXELLAYOUT(SDL_PIXELFORMAT_ABGR8888));
+    DPRINT("bytes/pixel: %d\n", SDL_BYTESPERPIXEL(SDL_PIXELFORMAT_ABGR8888));
+}
+
+void Draw() {
+    if (SDL_RenderClear(renderer) < 0) {
+        fprintf(stderr, "Failed to clear renderer! SDL Error: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+    if (SDL_RenderCopy(renderer, texture, NULL, NULL) < 0) {
+        fprintf(stderr, "Failed to render copy! SDL Error: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+    SDL_RenderPresent(renderer);
+}
+
+int main(int argc, char** argv) {
+
+    InitGraphics();
+
+    while (true) {
+
+        memset(pixels, 0x00FFFFFF, (SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(Pixel)) / 2);
+        if (SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * sizeof(Pixel)) < 0) {
+            fprintf(stderr, "Failed to update texture! SDL Error: %s\n", SDL_GetError());
+            exit(EXIT_FAILURE);
+        }
+
+        Draw();
+        sleep(1);
+    }
+
+    // if (argc != 2) {
+    //     fprintf(stderr, "usage: main <rom-filename>\n");
+    //     fflush(stderr);
+    //     exit(EXIT_FAILURE);
+    // }
+    
+    // const char* rom_filename = argv[1];
+    // Rom rom;
+    // RomInit(&rom, rom_filename);
+
+    // InitCHIP8();
+    // memcpy(&ram[0x200], rom.data, rom.size);
+
+    // for (;;) {
+    //     EmulateCycle();
+    //     Draw();
+    // }
+
+    SDL_Quit();
 
     exit(EXIT_SUCCESS);
 }
