@@ -210,6 +210,7 @@ void EmulateCycle() {
         }
         case 0x3000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
+            assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             pc += registers[reg] == val ? 2 : 1;
             DPRINT("SE V%d, %d\n", reg, val);
@@ -217,6 +218,7 @@ void EmulateCycle() {
         }
         case 0x4000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
+            assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             pc += registers[reg] != val ? 2 : 1;
             DPRINT("SNE V%d, %d\n", reg, val);
@@ -225,12 +227,15 @@ void EmulateCycle() {
         case 0x5000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
+            assert(lreg < NUM_REG);
+            assert(rreg < NUM_REG);
             pc += registers[lreg] == registers[rreg] ? 2 : 1;
             DPRINT("SE V%d, V%d\n", lreg, rreg);
             break;
         }
         case 0x6000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
+            assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             registers[reg] = val;
             ++pc;
@@ -239,6 +244,7 @@ void EmulateCycle() {
         }
         case 0x7000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
+            assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             registers[reg] += val;
             ++pc;
@@ -248,6 +254,8 @@ void EmulateCycle() {
         case 0x8000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
+            assert(lreg < NUM_REG);
+            assert(rreg < NUM_REG);
             switch (instruction & 0x000F) {
                 case 0x0000: {
                     registers[lreg] = registers[rreg];
@@ -316,6 +324,8 @@ void EmulateCycle() {
         case 0x9000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
+            assert(lreg < NUM_REG);
+            assert(rreg < NUM_REG);
             pc += registers[lreg] != registers[rreg] ? 2 : 1;
             DPRINT("SNE V%d, V%d\n", lreg, rreg);
             break;
@@ -335,6 +345,7 @@ void EmulateCycle() {
         }
         case 0xC000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
+            assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             registers[reg] = (rand() % 255) & val;
             ++pc;
@@ -344,6 +355,8 @@ void EmulateCycle() {
         case 0xD000: {
             uint8_t lreg = (instruction & 0x0F00) >> 8;
             uint8_t rreg = (instruction & 0x00F0) >> 4;
+            assert(lreg < NUM_REG);
+            assert(rreg < NUM_REG);
             uint8_t nbytes = instruction & 0x000F;
             DPRINT("DRW V%d, V%d, %d\n", lreg, rreg, nbytes);
             assert(false);
@@ -351,6 +364,7 @@ void EmulateCycle() {
         }
         case 0xE000: {
             uint8_t reg = (instruction & 0x0F00) >> 8;
+            assert(reg < NUM_REG);
             switch (instruction & 0x00FF) {
                 case 0x009E: {
                     DPRINT("SKP V%d\n", reg);
