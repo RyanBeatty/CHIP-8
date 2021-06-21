@@ -30,6 +30,7 @@
 #define VF 15
 #define NUM_FONTS 16
 #define FONT_SIZE 5
+#define MAX_SPRITE_SIZE_BYTES 15
 
 uint8_t ram[NUM_RAM];
 uint16_t stack[NUM_STACK];
@@ -158,6 +159,8 @@ uint8_t fonts[NUM_FONTS][FONT_SIZE] = {
     }
 };
 
+void ClearScreen();
+
 
 void InitCHIP8() {
     memset(registers, 0, NUM_REG);
@@ -168,6 +171,7 @@ void InitCHIP8() {
     sp = 0; 
     memset(ram, 0, NUM_RAM);
     memset(stack, 0, NUM_STACK * sizeof(uint16_t));
+    memcpy(ram, fonts, NUM_FONTS * FONT_SIZE * sizeof(uint8_t));
     return ;
 }
 
@@ -191,6 +195,7 @@ void EmulateCycle() {
                 default: {
                     uint16_t addr = instruction & 0x0FFF;
                     DPRINT("SYS %d\n", addr);
+                    assert(false);
                 }
             }
             break;
@@ -360,6 +365,7 @@ void EmulateCycle() {
             assert(lreg < NUM_REG);
             assert(rreg < NUM_REG);
             uint8_t nbytes = instruction & 0x000F;
+            assert (nbytes <= MAX_SPRITE_SIZE_BYTES);
             DPRINT("DRW V%d, V%d, %d\n", lreg, rreg, nbytes);
             assert(false);
             break;
@@ -422,7 +428,7 @@ void EmulateCycle() {
                 case 0x0029: {
                     uint8_t font_idx = registers[reg];
                     assert(font_idx < NUM_FONTS);
-                    reg_i = fonts[font_idx];
+                    reg_i = font_idx * FONT_SIZE;
                     ++pc;
                     DPRINT("LD F, V%d\n", reg);
                     break;
