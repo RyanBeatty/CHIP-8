@@ -642,7 +642,7 @@ int main(int argc, char** argv) {
     for (;;) {
         EmulateCycle();
         Render();
-        sleep(1);
+        usleep(1000 * 100);
     }
 
     SDL_Quit();
