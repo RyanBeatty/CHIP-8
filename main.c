@@ -14,6 +14,8 @@
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
+#define RESOLUTION_WIDTH 64
+#define RESOLUTION_HEIGHT 32
 
 #ifndef DEBUG
     #define DEBUG 0
@@ -159,6 +161,8 @@ uint8_t fonts[NUM_FONTS][FONT_SIZE] = {
     }
 };
 
+bool logical_pixels[RESOLUTION_HEIGHT][RESOLUTION_WIDTH];
+
 void ClearScreen();
 
 
@@ -183,7 +187,7 @@ void EmulateCycle() {
             switch (instruction) {
                 case 0x00E0: {
                     ClearScreen();
-                    ++pc;
+                    pc += 2;
                     DPRINT("CLS\n");
                     break;
                 }
@@ -221,7 +225,7 @@ void EmulateCycle() {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
-            pc += registers[reg] == val ? 2 : 1;
+            pc += registers[reg] == val ? 4 : 2;
             DPRINT("SE V%d, %d\n", reg, val);
             break;
         }
@@ -229,7 +233,7 @@ void EmulateCycle() {
             uint8_t reg = (instruction & 0x0F00) >> 8;
             assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
-            pc += registers[reg] != val ? 2 : 1;
+            pc += registers[reg] != val ? 4 : 2;
             DPRINT("SNE V%d, %d\n", reg, val);
             break;
         }
@@ -238,7 +242,7 @@ void EmulateCycle() {
             uint8_t rreg = (instruction & 0x00F0) >> 4;
             assert(lreg < NUM_REG);
             assert(rreg < NUM_REG);
-            pc += registers[lreg] == registers[rreg] ? 2 : 1;
+            pc += registers[lreg] == registers[rreg] ? 4 : 2;
             DPRINT("SE V%d, V%d\n", lreg, rreg);
             break;
         }
@@ -247,7 +251,7 @@ void EmulateCycle() {
             assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             registers[reg] = val;
-            ++pc;
+            pc += 2;
             DPRINT("LD V%d, %d\n", reg, val);
             break;
         }
@@ -256,7 +260,7 @@ void EmulateCycle() {
             assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             registers[reg] += val;
-            ++pc;
+            pc += 2;
             DPRINT("ADD V%d, %d\n", reg, val);
             break;
         }
@@ -268,7 +272,7 @@ void EmulateCycle() {
             switch (instruction & 0x000F) {
                 case 0x0000: {
                     registers[lreg] = registers[rreg];
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD V%d, V%d\n", lreg, rreg);
                     break;
                 }
@@ -290,35 +294,35 @@ void EmulateCycle() {
                 case 0x0004: {
                     registers[VF] = 255 - registers[lreg] < registers[rreg] ? 1 : 0;
                     registers[lreg] += registers[rreg];
-                    ++pc;
+                    pc += 2;
                     DPRINT("ADD V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0005: {
                     registers[VF] = registers[lreg] > registers[rreg] ? 1 : 0;
                     registers[lreg] -= registers[rreg];
-                    ++pc;
+                    pc += 2;
                     DPRINT("SUB V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0006: {
                     registers[VF] = registers[lreg] & 0x01;
                     registers[lreg] /= 2;
-                    ++pc;
+                    pc += 2;
                     DPRINT("SHR V%d {, V%d}\n", lreg, rreg);
                     break;
                 }
                 case 0x0007: {
                     registers[VF] = registers[rreg] > registers[lreg] ? 1 : 0;
                     registers[lreg] = registers[rreg] - registers[lreg];
-                    ++pc;
+                    pc += 2;
                     DPRINT("SUBN V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x000E: {
                     registers[VF] = registers[lreg] & 0x80;
                     registers[lreg] *= 2;
-                    ++pc;
+                    pc += 2;
                     DPRINT("SHL V%d {, V%d}\n", lreg, rreg);
                     break;
                 }
@@ -342,7 +346,7 @@ void EmulateCycle() {
         case 0xA000: {
             uint16_t addr = instruction & 0x0FFF;
             reg_i = addr;
-            ++pc;
+            pc += 2;
             DPRINT("LD I, %d\n", addr);
             break;
         }
@@ -357,7 +361,7 @@ void EmulateCycle() {
             assert(reg < NUM_REG);
             uint8_t val = instruction & 0x00FF;
             registers[reg] = (rand() % 255) & val;
-            ++pc;
+            pc += 2;
             DPRINT("RND V%d, %d\n", reg, val);
             break;
         }
@@ -368,8 +372,20 @@ void EmulateCycle() {
             assert(rreg < NUM_REG);
             uint8_t nbytes = instruction & 0x000F;
             assert (nbytes <= MAX_SPRITE_SIZE_BYTES);
+            // uint8_t x = registers[lreg];
+            uint8_t y = registers[rreg];
+            // TODO: Handle screen wrap around.
+            for (size_t i = reg_i, y = registers[rreg]; i < nbytes; ++i, ++y) {
+                uint8_t sprite_byte = ram[i];
+                for (uint8_t pos = 8, x = registers[lreg]; pos > 0; --pos, ++x) {
+                    bool signal = (sprite_byte >> (pos - 1)) & 0x01;
+                    bool result = logical_pixels[y][x] ^ signal;
+                    registers[VF] = registers[VF] || (logical_pixels[y][x] && !result) ? 1 : 0;
+                    logical_pixels[y][x] = result; 
+                }
+            }
+            pc += 2;
             DPRINT("DRW V%d, V%d, %d\n", lreg, rreg, nbytes);
-            assert(false);
             break;
         }
         case 0xE000: {
@@ -400,7 +416,7 @@ void EmulateCycle() {
             switch (instruction & 0x00FF) {
                 case 0x0007: {
                     registers[reg] = delay_reg;
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD V%d, DT\n", reg);
                     break;
                 }
@@ -411,19 +427,19 @@ void EmulateCycle() {
                 }
                 case 0x0015: {
                     delay_reg = registers[reg];
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD DT, V%d\n", reg);
                     break;
                 }
                 case 0x0018: {
                     sound_reg = registers[reg];
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD ST, V%d\n", reg);
                     break;
                 }
                 case 0x001E: {
                     reg_i += registers[reg];
-                    ++pc;
+                    pc += 2;
                     DPRINT("ADD I, V%d\n", reg);
                     break;
                 }
@@ -431,7 +447,7 @@ void EmulateCycle() {
                     uint8_t font_idx = registers[reg];
                     assert(font_idx < NUM_FONTS);
                     reg_i = font_idx * FONT_SIZE;
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD F, V%d\n", reg);
                     break;
                 }
@@ -442,7 +458,7 @@ void EmulateCycle() {
                     ram[reg_i + 1] = val % 10;
                     val /= 10;
                     ram[reg_i] = val;
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD B, V%d\n", reg);
                     break;
                 }
@@ -452,7 +468,7 @@ void EmulateCycle() {
                     for (uint8_t i = 0; i <= reg; ++i, ++addr) {
                         ram[addr] = registers[i];
                     }
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD [I], V%d\n", reg);
                     break;
                 }
@@ -461,7 +477,7 @@ void EmulateCycle() {
                     for (uint8_t i = 0; i <= reg; ++i, ++addr) {
                         registers[i] = ram[addr];
                     }
-                    ++pc;
+                    pc += 2;
                     DPRINT("LD V%d, [I]\n", reg);
                     break;
                 }
@@ -537,7 +553,7 @@ typedef uint32_t Pixel;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Texture* texture = NULL;
-Pixel pixels[SCREEN_WIDTH * SCREEN_HEIGHT];
+Pixel pixels[RESOLUTION_WIDTH * RESOLUTION_HEIGHT];
 
 
 void InitGraphics() {
@@ -565,7 +581,7 @@ void InitGraphics() {
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, SCREEN_WIDTH, SCREEN_HEIGHT);
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
     if (texture == NULL) {
         fprintf(stderr, "Texture could not be created! SDL Error: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
@@ -579,7 +595,13 @@ void InitGraphics() {
 }
 
 void Render() {
-    if (SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * sizeof(Pixel)) < 0) {
+    // Translate logical pixels to actual pixels displayed on screen.
+    for (size_t y = 0; y < RESOLUTION_HEIGHT; ++y) {
+        for (size_t x = 0; x < RESOLUTION_WIDTH; ++x) {
+            pixels[(y * RESOLUTION_WIDTH) + x] = logical_pixels[y][x] ? 0x00FFFFFF : 0x00000000;
+        }
+    }
+    if (SDL_UpdateTexture(texture, NULL, pixels, RESOLUTION_WIDTH * sizeof(Pixel)) < 0) {
         fprintf(stderr, "Failed to update texture! SDL Error: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
@@ -596,43 +618,32 @@ void Render() {
 }
 
 void ClearScreen() {
-    memset(pixels, 0x00000000, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(Pixel));
+    memset(pixels, 0x00000000, RESOLUTION_WIDTH * RESOLUTION_HEIGHT * sizeof(Pixel));
     return ;
 }
 
 int main(int argc, char** argv) {
 
+
+    if (argc != 2) {
+        fprintf(stderr, "usage: main <rom-filename>\n");
+        fflush(stderr);
+        exit(EXIT_FAILURE);
+    }
+    
+    const char* rom_filename = argv[1];
+    Rom rom;
+    RomInit(&rom, rom_filename);
+
+    InitCHIP8();
+    memcpy(&ram[0x200], rom.data, rom.size);
     InitGraphics();
 
-    while (true) {
-
-        memset(pixels, 0x00FFFFFF, (SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(Pixel)) / 2);
-        if (SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * sizeof(Pixel)) < 0) {
-            fprintf(stderr, "Failed to update texture! SDL Error: %s\n", SDL_GetError());
-            exit(EXIT_FAILURE);
-        }
-
+    for (;;) {
+        EmulateCycle();
         Render();
         sleep(1);
     }
-
-    // if (argc != 2) {
-    //     fprintf(stderr, "usage: main <rom-filename>\n");
-    //     fflush(stderr);
-    //     exit(EXIT_FAILURE);
-    // }
-    
-    // const char* rom_filename = argv[1];
-    // Rom rom;
-    // RomInit(&rom, rom_filename);
-
-    // InitCHIP8();
-    // memcpy(&ram[0x200], rom.data, rom.size);
-
-    // for (;;) {
-    //     EmulateCycle();
-    //     Draw();
-    // }
 
     SDL_Quit();
 
