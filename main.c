@@ -55,11 +55,11 @@ uint8_t fonts[NUM_FONTS][FONT_SIZE] = {
         0b11110000,
     },
     {
-        0b01000000,
-        0b11000000,
-        0b01000000,
-        0b01000000,
-        0b11110000,
+        0b00100000,
+        0b01100000,
+        0b00100000,
+        0b00100000,
+        0b01110000,
     },
     {
         0b11110000,
@@ -373,9 +373,9 @@ void EmulateCycle() {
             uint8_t nbytes = instruction & 0x000F;
             assert (nbytes <= MAX_SPRITE_SIZE_BYTES);
             // uint8_t x = registers[lreg];
-            uint8_t y = registers[rreg];
+            // uint8_t y = registers[rreg];
             // TODO: Handle screen wrap around.
-            for (size_t i = reg_i, y = registers[rreg]; i < nbytes; ++i, ++y) {
+            for (size_t i = reg_i, y = registers[rreg]; i < reg_i + nbytes; ++i, ++y) {
                 uint8_t sprite_byte = ram[i];
                 for (uint8_t pos = 8, x = registers[lreg]; pos > 0; --pos, ++x) {
                     bool signal = (sprite_byte >> (pos - 1)) & 0x01;
