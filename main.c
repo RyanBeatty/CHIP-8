@@ -399,6 +399,7 @@ void EmulateCycle() {
             assert(rreg < NUM_REG);
             uint8_t nbytes = instruction & 0x000F;
             assert (nbytes <= MAX_SPRITE_SIZE_BYTES);
+            registers[VF] = 0;
             for (size_t i = reg_i, y = registers[rreg] % RESOLUTION_HEIGHT; i < reg_i + nbytes; ++i, y = (y + 1) % RESOLUTION_HEIGHT) {
                 uint8_t sprite_byte = ram[i];
                 for (uint8_t pos = 8, x = registers[lreg] % RESOLUTION_WIDTH; pos > 0; --pos, x = (x + 1) % RESOLUTION_WIDTH) {
