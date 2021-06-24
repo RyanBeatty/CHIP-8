@@ -186,7 +186,7 @@ void EmulateCycle() {
         case 0x0000: {
             switch (instruction) {
                 case 0x00E0: {
-                    ClearScreen();
+                    memset(logical_pixels, false, RESOLUTION_WIDTH * RESOLUTION_HEIGHT * sizeof(bool));
                     pc += 2;
                     DPRINT("CLS\n");
                     break;
@@ -372,10 +372,9 @@ void EmulateCycle() {
             assert(rreg < NUM_REG);
             uint8_t nbytes = instruction & 0x000F;
             assert (nbytes <= MAX_SPRITE_SIZE_BYTES);
-            // TODO: Handle screen wrap around.
-            for (size_t i = reg_i, y = registers[rreg]; i < reg_i + nbytes; ++i, ++y) {
+            for (size_t i = reg_i, y = registers[rreg] % RESOLUTION_HEIGHT; i < reg_i + nbytes; ++i, y = (y + 1) % RESOLUTION_HEIGHT) {
                 uint8_t sprite_byte = ram[i];
-                for (uint8_t pos = 8, x = registers[lreg]; pos > 0; --pos, ++x) {
+                for (uint8_t pos = 8, x = registers[lreg] % RESOLUTION_WIDTH; pos > 0; --pos, x = (x + 1) % RESOLUTION_WIDTH) {
                     bool signal = (sprite_byte >> (pos - 1)) & 0x01;
                     bool result = logical_pixels[y][x] ^ signal;
                     registers[VF] = registers[VF] || (logical_pixels[y][x] && !result) ? 1 : 0;
@@ -612,11 +611,6 @@ void Render() {
         exit(EXIT_FAILURE);
     }
     SDL_RenderPresent(renderer);
-    return ;
-}
-
-void ClearScreen() {
-    memset(pixels, 0x00000000, RESOLUTION_WIDTH * RESOLUTION_HEIGHT * sizeof(Pixel));
     return ;
 }
 
