@@ -332,7 +332,7 @@ void EmulateCycle() {
                 }
                 case 0x0006: {
                     registers[VF] = registers[lreg] & 0x01;
-                    registers[lreg] /= 2;
+                    registers[lreg] >>= 1;
                     pc += 2;
                     DPRINT("SHR V%d {, V%d}\n", lreg, rreg);
                     break;
@@ -345,8 +345,8 @@ void EmulateCycle() {
                     break;
                 }
                 case 0x000E: {
-                    registers[VF] = registers[lreg] & 0x80;
-                    registers[lreg] *= 2;
+                    registers[VF] = (registers[lreg] & 0x80) >> 7;
+                    registers[lreg] <<= 1;
                     pc += 2;
                     DPRINT("SHL V%d {, V%d}\n", lreg, rreg);
                     break;
