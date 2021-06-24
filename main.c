@@ -163,6 +163,28 @@ uint8_t fonts[NUM_FONTS][FONT_SIZE] = {
 
 bool logical_pixels[RESOLUTION_HEIGHT][RESOLUTION_WIDTH];
 
+typedef enum {
+    KEY_0,
+    KEY_1,
+    KEY_2,
+    KEY_3,
+    KEY_4,
+    KEY_5,
+    KEY_6,
+    KEY_7,
+    KEY_8,
+    KEY_9,
+    KEY_A,
+    KEY_B,
+    KEY_C,
+    KEY_D,
+    KEY_E,
+    KEY_F,
+    KEY_UNKNOWN
+} Key;
+
+Key key;
+
 void ClearScreen();
 
 
@@ -181,7 +203,7 @@ void InitCHIP8() {
 
 void EmulateCycle() {
     uint16_t instruction = ram[pc] | (ram[pc + 1] << 8);
-    DPRINT("0x%04" PRIx16 ": ", instruction);
+    printf("instruction: 0x%04" PRIx16 "\n", instruction);
     switch (instruction & 0xF000) {
         case 0x0000: {
             switch (instruction) {
@@ -390,13 +412,13 @@ void EmulateCycle() {
             assert(reg < NUM_REG);
             switch (instruction & 0x00FF) {
                 case 0x009E: {
+                    pc += registers[reg] == key ? 4 : 2;
                     DPRINT("SKP V%d\n", reg);
-                    assert(false);
                     break;
                 }
                 case 0x00A1: {
+                    pc += registers[reg] != key ? 4 : 2;
                     DPRINT("SKNP V%d\n", reg);
-                    assert(false);
                     break;
                 }
                 default: {
@@ -418,8 +440,9 @@ void EmulateCycle() {
                     break;
                 }
                 case 0x000A: {
+                    pc += key != KEY_UNKNOWN ? 2 : 0;
+                    registers[reg] = key;
                     DPRINT("LD V%d, K\n", reg);
-                    assert(false);
                     break;
                 }
                 case 0x0015: {
@@ -614,6 +637,99 @@ void Render() {
     return ;
 }
 
+void ReadKey() {
+    SDL_Event e;
+    if (SDL_PollEvent(&e)) {
+        if (e.type == SDL_KEYDOWN) {
+            printf("keypress: %d\n", e.key.keysym.sym);
+            switch (e.key.keysym.sym) {
+                case SDLK_1: {
+                    key = KEY_1;
+                    break;
+                }
+                case SDLK_2: {
+                    key = KEY_2;
+                    break;    
+                }
+                case SDLK_3: {
+                    key = KEY_3;
+                    break;
+                }
+                case SDLK_4: {
+                    key = KEY_C;
+                    break;
+                }
+                case SDLK_q: {
+                    key = KEY_4;
+                    break;
+                }
+                case SDLK_w: {
+                    key = KEY_5;
+                    break;
+                }
+                case SDLK_e: {
+                    key = KEY_6;
+                    break;
+                }
+                case SDLK_r: {
+                    key = KEY_D;
+                    break;
+                }
+                case SDLK_a: {
+                    key = KEY_7;
+                    break;
+                }
+                case SDLK_s: {
+                    key = KEY_8;
+                    break;
+                }
+                case SDLK_d: {
+                    key = KEY_9;
+                    break;
+                }
+                case SDLK_f: {
+                    key = KEY_E;
+                    break;
+                }
+                case SDLK_z: {
+                    key = KEY_A;
+                    break;
+                }
+                case SDLK_x: {
+                    key = KEY_0;
+                    break;
+                }
+                case SDLK_c: {
+                    key = KEY_B;
+                    break;
+                }
+                case SDLK_v: {
+                    key = KEY_F;
+                    break;
+                }
+                case SDLK_SPACE: {
+                    // Pause and wait still space again.
+                    while (!SDL_PollEvent(&e) || e.type != SDLK_SPACE) {
+                        usleep(1000 * 10);
+                    }
+                    break;
+                }
+                default: {
+                    fprintf(stderr, "Uknown key: %d\n", e.key.keysym.sym);
+                    fflush(stderr);
+                    exit(EXIT_FAILURE);
+                }
+            }
+        } else if (e.type == SDL_QUIT) {
+            printf("quiting...\n");
+            fflush(stdout);
+            exit(EXIT_SUCCESS);
+        }
+    } else {
+        key = KEY_UNKNOWN;
+    }
+}
+
 int main(int argc, char** argv) {
 
 
@@ -634,6 +750,7 @@ int main(int argc, char** argv) {
     for (;;) {
         EmulateCycle();
         Render();
+        ReadKey();
         usleep(1000 * 100);
     }
 
