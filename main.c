@@ -364,7 +364,7 @@ void EmulateCycle() {
             uint8_t rreg = (instruction & 0x00F0) >> 4;
             assert(lreg < NUM_REG);
             assert(rreg < NUM_REG);
-            pc += registers[lreg] != registers[rreg] ? 2 : 1;
+            pc += registers[lreg] != registers[rreg] ? 4 : 2;
             DPRINT("SNE V%d, V%d\n", lreg, rreg);
             break;
         }
