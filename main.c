@@ -203,7 +203,7 @@ void InitCHIP8() {
 
 void EmulateCycle() {
     uint16_t instruction = ram[pc] | (ram[pc + 1] << 8);
-    printf("instruction: 0x%04" PRIx16 "\n", instruction);
+    printf("pc: %d; instruction: 0x%04" PRIx16 "\n", pc, instruction);
     switch (instruction & 0xF000) {
         case 0x0000: {
             switch (instruction) {
@@ -215,8 +215,9 @@ void EmulateCycle() {
                 }
                 case 0x00EE: {
                     // TODO: Is this the right order of operations?
+                    assert(sp > 0);
                     --sp;
-                    pc = stack[sp];
+                    pc = stack[sp] + 2;  // Need to increment so I'm not stuck in an infinite loop?
                     DPRINT("RET\n");
                     break;
                 }
@@ -237,6 +238,7 @@ void EmulateCycle() {
         case 0x2000: {
             // TODO: Is this the right order of operations?
             uint16_t addr = instruction & 0x0FFF;
+            assert(sp < NUM_STACK);
             stack[sp] = pc;
             ++sp;
             pc = addr;
