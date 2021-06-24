@@ -300,16 +300,19 @@ void EmulateCycle() {
                 }
                 case 0x0001: {
                     registers[lreg] |= registers[rreg];
+                    pc += 2;
                     DPRINT("OR V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0002: {
                     registers[lreg] &= registers[rreg];
+                    pc += 2;
                     DPRINT("AND V%d, V%d\n", lreg, rreg);
                     break;
                 }
                 case 0x0003: {
                     registers[lreg] ^= registers[rreg];
+                    pc += 2;
                     DPRINT("XOR V%d, V%d\n", lreg, rreg);
                     break;
                 }
@@ -717,7 +720,8 @@ void ReadKey() {
                 default: {
                     fprintf(stderr, "Uknown key: %d\n", e.key.keysym.sym);
                     fflush(stderr);
-                    exit(EXIT_FAILURE);
+                    key = KEY_UNKNOWN;
+                    // exit(EXIT_FAILURE);
                 }
             }
         } else if (e.type == SDL_QUIT) {
