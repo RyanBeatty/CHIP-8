@@ -521,6 +521,10 @@ void EmulateCycle() {
             exit(EXIT_FAILURE);
         }
     }
+    // This is hacky for the moment. I should tie this to the framterate/clock somehow.
+    if (delay_reg > 0) {
+        --delay_reg;
+    }
     return ;
 }
 
