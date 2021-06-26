@@ -202,7 +202,8 @@ void InitCHIP8() {
 }
 
 void EmulateCycle() {
-    uint16_t instruction = ram[pc] | (ram[pc + 1] << 8);
+    // CHIP-8 instructions are big endian encoded.
+    uint16_t instruction = ram[pc + 1] << 0 | ram[pc] << 8;
     printf("pc: %d; instruction: 0x%04" PRIx16 "\n", pc, instruction);
     switch (instruction & 0xF000) {
         case 0x0000: {
@@ -570,12 +571,6 @@ void RomInit(Rom* rom, const char* filename) {
         exit(EXIT_FAILURE);
     }
 
-    // CHIP-8 instructions are stored big endian, so we convert the ROM to host byte order.
-    for (size_t i = 0; i < rom->size; i += 2) {
-        uint16_t instruction = (rom->data[i] << 0) | (rom->data[i+1] << 8);
-        instruction = ntohs(instruction);
-        memcpy(&rom->data[i], &instruction, 2); 
-    }
     return ;
 }
 
