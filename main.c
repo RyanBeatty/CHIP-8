@@ -183,9 +183,11 @@ typedef enum {
     KEY_UNKNOWN
 } Key;
 
-Key key;
+#define NUM_KEYS 17
 
-void ClearScreen();
+bool keys[NUM_KEYS];
+
+Key ReadInput();
 
 
 void InitCHIP8() {
@@ -419,12 +421,12 @@ void EmulateCycle() {
             assert(reg < NUM_REG);
             switch (instruction & 0x00FF) {
                 case 0x009E: {
-                    pc += registers[reg] == key ? 4 : 2;
+                    pc += keys[registers[reg]] ? 4 : 2;
                     DPRINT("SKP V%d\n", reg);
                     break;
                 }
                 case 0x00A1: {
-                    pc += registers[reg] != key ? 4 : 2;
+                    pc += !keys[registers[reg]] ? 4 : 2;
                     DPRINT("SKNP V%d\n", reg);
                     break;
                 }
@@ -447,7 +449,10 @@ void EmulateCycle() {
                     break;
                 }
                 case 0x000A: {
-                    pc += key != KEY_UNKNOWN ? 2 : 0;
+                    Key key = ReadInput();
+                    while (key == KEY_UNKNOWN) {
+                        key = ReadInput();
+                    }
                     registers[reg] = key;
                     DPRINT("LD V%d, K\n", reg);
                     break;
@@ -642,98 +647,98 @@ void Render() {
     return ;
 }
 
-void ReadKey() {
-    SDL_Event e;
-    if (SDL_PollEvent(&e)) {
-        if (e.type == SDL_KEYDOWN) {
-            printf("keypress: %d\n", e.key.keysym.sym);
-            switch (e.key.keysym.sym) {
-                case SDLK_1: {
-                    key = KEY_1;
-                    break;
-                }
-                case SDLK_2: {
-                    key = KEY_2;
-                    break;    
-                }
-                case SDLK_3: {
-                    key = KEY_3;
-                    break;
-                }
-                case SDLK_4: {
-                    key = KEY_C;
-                    break;
-                }
-                case SDLK_q: {
-                    key = KEY_4;
-                    break;
-                }
-                case SDLK_w: {
-                    key = KEY_5;
-                    break;
-                }
-                case SDLK_e: {
-                    key = KEY_6;
-                    break;
-                }
-                case SDLK_r: {
-                    key = KEY_D;
-                    break;
-                }
-                case SDLK_a: {
-                    key = KEY_7;
-                    break;
-                }
-                case SDLK_s: {
-                    key = KEY_8;
-                    break;
-                }
-                case SDLK_d: {
-                    key = KEY_9;
-                    break;
-                }
-                case SDLK_f: {
-                    key = KEY_E;
-                    break;
-                }
-                case SDLK_z: {
-                    key = KEY_A;
-                    break;
-                }
-                case SDLK_x: {
-                    key = KEY_0;
-                    break;
-                }
-                case SDLK_c: {
-                    key = KEY_B;
-                    break;
-                }
-                case SDLK_v: {
-                    key = KEY_F;
-                    break;
-                }
-                case SDLK_SPACE: {
-                    // Pause and wait still space again.
-                    while (!SDL_PollEvent(&e) || e.type != SDLK_SPACE) {
-                        usleep(1000 * 10);
-                    }
-                    break;
-                }
-                default: {
-                    fprintf(stderr, "Uknown key: %d\n", e.key.keysym.sym);
-                    fflush(stderr);
-                    key = KEY_UNKNOWN;
-                    // exit(EXIT_FAILURE);
-                }
-            }
-        } else if (e.type == SDL_QUIT) {
-            printf("quiting...\n");
-            fflush(stdout);
-            exit(EXIT_SUCCESS);
+Key MapKeycode(SDL_Keycode code) {
+    Key key = KEY_UNKNOWN;
+    switch (code) {
+        case SDLK_1: {
+            key = KEY_1;
+            break;
         }
-    } else {
-        key = KEY_UNKNOWN;
+        case SDLK_2: {
+            key = KEY_2;
+            break;    
+        }
+        case SDLK_3: {
+            key = KEY_3;
+            break;
+        }
+        case SDLK_4: {
+            key = KEY_C;
+            break;
+        }
+        case SDLK_q: {
+            key = KEY_4;
+            break;
+        }
+        case SDLK_w: {
+            key = KEY_5;
+            break;
+        }
+        case SDLK_e: {
+            key = KEY_6;
+            break;
+        }
+        case SDLK_r: {
+            key = KEY_D;
+            break;
+        }
+        case SDLK_a: {
+            key = KEY_7;
+            break;
+        }
+        case SDLK_s: {
+            key = KEY_8;
+            break;
+        }
+        case SDLK_d: {
+            key = KEY_9;
+            break;
+        }
+        case SDLK_f: {
+            key = KEY_E;
+            break;
+        }
+        case SDLK_z: {
+            key = KEY_A;
+            break;
+        }
+        case SDLK_x: {
+            key = KEY_0;
+            break;
+        }
+        case SDLK_c: {
+            key = KEY_B;
+            break;
+        }
+        case SDLK_v: {
+            key = KEY_F;
+            break;
+        }
+        default: {
+            fprintf(stderr, "Uknown keycode: %d\n", code);
+            fflush(stderr);
+            key = KEY_UNKNOWN;
+            // exit(EXIT_FAILURE);
+        }
     }
+
+    return key;
+}
+
+Key ReadInput() {
+    SDL_Event e;
+    Key last_key = KEY_UNKNOWN;
+    while (SDL_PollEvent(&e)) {
+        Key key = MapKeycode(e.key.keysym.sym);
+        if (e.type == SDL_KEYDOWN) {
+            keys[key] = true;
+            last_key = key;
+        } else {
+            keys[key] = false;
+        }
+    }
+
+    return last_key;
 }
 
 int main(int argc, char** argv) {
@@ -754,10 +759,10 @@ int main(int argc, char** argv) {
     InitGraphics();
 
     for (;;) {
+        ReadInput();
         EmulateCycle();
         Render();
-        ReadKey();
-        usleep(1000 * 100);
+        usleep(1200);
     }
 
     SDL_Quit();
