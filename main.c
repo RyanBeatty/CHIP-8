@@ -729,13 +729,12 @@ Key ReadInput() {
     SDL_Event e;
     Key last_key = KEY_UNKNOWN;
     while (SDL_PollEvent(&e)) {
-        Key key = MapKeycode(e.key.keysym.sym);
-        if (e.type == SDL_KEYDOWN) {
-            keys[key] = true;
-            last_key = key;
-        } else {
-            keys[key] = false;
+        if (e.type == SDL_QUIT) {
+            exit(EXIT_SUCCESS);
         }
+        Key key = MapKeycode(e.key.keysym.sym);
+        keys[key] = e.type == SDL_KEYDOWN;
+        last_key = e.type == SDL_KEYDOWN ? key : last_key;
     }
 
     return last_key;
