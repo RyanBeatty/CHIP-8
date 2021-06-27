@@ -7,15 +7,10 @@ sudo apt-get install libsdl2-2.0
 sudo apt-get install libsdl2-dev
 ```
 
-# Build
+# Build and Run
 
 ```
 make all
-```
-
-# Run
-
-```
 ./chip8 path/to/rom
 ```
 
